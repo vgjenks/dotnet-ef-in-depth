@@ -14,6 +14,9 @@ List<int> listFilters = [0, 3, 8, 2];
 // var query = db.Posts
 //     .TagWith("Counts with Contains filter")
 //     .Where(x => arrayFilters.Contains(x.RandomNumber));
+// var query = db.Posts
+//     .TagWith("Counts with Contains filter")
+//     .Where(x => EF.Constant(listFilters).Contains(x.RandomNumber));
 var query = db.Posts
     .TagWith("Counts with Contains filter")
     .Where(x => listFilters.Contains(x.RandomNumber));
