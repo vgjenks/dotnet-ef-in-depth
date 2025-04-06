@@ -1,2 +1,3 @@
 webtop-debian-1: Hello World!
 hotfix-user-1: Hotfix time!
+hotfix-user-2: Another hotfix for the release branch.
