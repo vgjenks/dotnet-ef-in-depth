@@ -15,56 +15,78 @@ class ProgressCounter {
 }
 
 public class Seed {
-    private const int TOTAL_SEED = 100_000;
-
     private static async Task SeedData() {
-        using var db = new BloggingContext();
+
+        using var db = new CommerceContext();
 
         var faker = new Faker("en");
 
-        //parent records
-        if (!await db.Blogs.AnyAsync()) {
-            string protocol = "https";
-            string domain = "blogga.com";
-            await db.Blogs.AddAsync(new() {
-                Url = faker.Internet.UrlWithPath(protocol, domain)
+        //Customers
+        if (!await db.Customer.AnyAsync()) {
+            Console.WriteLine("...Seeding data, please wait.");
+
+            await db.Customer.AddAsync(new() {
+                FirstName = faker.Name.FirstName(),
+                LastName = faker.Name.LastName()
             });
-            await db.Blogs.AddAsync(new() {
-                Url = faker.Internet.UrlWithPath(protocol, domain)
+            await db.Customer.AddAsync(new() {
+                FirstName = faker.Name.FirstName(),
+                LastName = faker.Name.LastName()
             });
-            await db.Blogs.AddAsync(new() {
-                Url = faker.Internet.UrlWithPath(protocol, domain)
+            await db.Customer.AddAsync(new() {
+                FirstName = faker.Name.FirstName(),
+                LastName = faker.Name.LastName()
             });
             await db.SaveChangesAsync();
         }
 
-        var blogs = await db.Blogs.ToListAsync();
-
-        //loop and add children
-        ProgressCounter progress = new();
-        Random random = new();
-        foreach (var blog in blogs) {
-            if (!await db.Posts.AnyAsync(x => x.BlogId == blog.BlogId)) {
-                for (int i=0; i<TOTAL_SEED; i++) {
-                    await db.Posts.AddAsync(new() {
-                        BlogId = blog.BlogId,
-                        Title = faker.Lorem.Sentence(wordCount: 6),
-                        Content = faker.Lorem.Paragraph(),
-                        RandomNumber = random.Next(10)
-                    });
-                    //terminal progress bar
-                    await progress.Show(TOTAL_SEED * blogs.Count);
-                }
+        //Items
+        if (!await db.Item.AnyAsync()) {
+            for (int x = 0; x < 20; x++) {
+                await db.Item.AddAsync(new() {
+                    Name = faker.Commerce.ProductName(),
+                    Description = faker.Lorem.Paragraph(),
+                    Price = faker.Finance.Amount(1, 1000)
+                });
             }
+            await db.SaveChangesAsync();
         }
-        //commit
-        await db.SaveChangesAsync();
+
+        //Orders and OrderItems
+        if (!await db.Order.AnyAsync()) {
+            List<Item> allItems = await db.Item.ToListAsync();
+
+            foreach (var customer in await db.Customer.ToListAsync()) {
+                List<OrderItem> orderItems = new();
+                Random random = new();
+                int randomItemIdx = random.Next(1, 20);
+                int randomQty = random.Next(1, 5);
+                List<Item> randomItems = allItems.OrderBy(o => randomItemIdx).Take(randomItemIdx).ToList();
+                foreach (var item in randomItems) {
+                    OrderItem orderItem = new() {
+                        Item = item,
+                        Quantity = faker.Random.Int(min: 1, max: 8)
+                    };
+                    await db.OrderItem.AddAsync(orderItem);
+                    orderItems.Add(orderItem);
+                }
+                Order order = new() {
+                    Customer = customer,
+                    OrderItems = orderItems
+                };
+                await db.Order.AddAsync(order);
+            }
+
+            await db.SaveChangesAsync();
+            Console.WriteLine("Seeding complete!");
+        }
     }
 
     public static async Task Run() {
         try {
             await SeedData();
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             Console.WriteLine($"Could not execute Run(): {ex.Message}");
         }
     }
